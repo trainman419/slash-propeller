@@ -58,6 +58,8 @@ PUB Main
    
    barDir := 1
    repeat
+      barDir := 0
+   repeat
       'LCD.clear
       'LCD.str(string("1: "))
       'LCD.out(distance[0]) 
@@ -178,28 +180,37 @@ PUB Sonar
 
    repeat                                                                                                  
       repeat inCnt from 0 to 4
-         buffer[inCnt] := Serin.rxtime(100) ' wait 100ms for data before giving up
+         buffer[inCnt] := Serin.rxtime(40) ' wait 40ms for data before giving up
+                                           '  value determined by experimentation
 
       'most bit errors will cause one of these conditions to fail
-      ifnot buffer[0] == 82 and buffer[1] < 58 and buffer[1] > 47 and buffer[2] < 58 and buffer[2] > 47 and buffer[3] < 58 and buffer[3] > 47 and buffer[4] == 13
-        distance[5]++
-        if distance[5] > 255
-          distance[5] := 0
-         
-      distance[sonarCnt] := (buffer[1]-48)*100 + (buffer[2]-48)*10 + (buffer[3]-48)
+      if buffer[0] == 82 and buffer[1] < 58 and buffer[1] > 47 and buffer[2] < 58 and buffer[2] > 47 and buffer[3] < 58 and buffer[3] > 47 and buffer[4] == 13
+        distance[sonarCnt] := (buffer[1]-48)*100 + (buffer[2]-48)*10 + (buffer[3]-48)
 
-      sonarCnt++
-      if sonarCnt > 4
-         sonarCnt := 0
-         cognew(Process_Input, @Pstack)
-          
+        cognew(Process_Input, @Pstack)
+
+        sonarCnt++
+        if sonarCnt > 4
+          sonarCnt := 0
+         
+        'bar := bar >> 1
+        'if bar == 0
+        '  bar := |< 31
+      else
+        'bar := bar << 1
+        'if bar == 0
+        '  bar := 1
+        Serin.rxflush
+
+      bar := |< sonarCnt
+      
       OUTA[sonarCnt+9] := 1
 
       waitcnt( clkfreq/40000 * 10 + cnt) 'wait 250 us
 
       OUTA[sonarCnt+9] := 0
 
-      waitcnt( clkfreq/40000 * 100 + cnt) 'wait 250 us
+      waitcnt( clkfreq/40000 * 100 + cnt) 'wait 2.5 ms for sensor to start returning data
 
       'if sonarCnt == 0
       '   Servo.Set(7, 1000 + distance[sonarCnt]*4)
