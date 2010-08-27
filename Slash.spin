@@ -123,22 +123,28 @@ PUB Main
 CON
    DIST_H = 2
    SPEED_C = 2
-   STEER_C = 2
+   STEER_C = 1
 PUB Process_Input
-   'old imput processing, supplanted by light show
+   'old input processing, supplanted by light show
    'bar := distance[0] + distance[1] << 8 + distance[2] << 16 + distance[3] << 24
 
-   if distance[0] < 12 or distance[1] < 12 or distance[2] < 12 'stop if we get too close to something
+   if distance[0] < 16 or distance[1] < 16 or distance[2] < 16 'stop if we get too close to something
       speed := 0
       dir := 0
    elseif distance[0] < (distance[1] <# distance[2]) - DIST_H
-      speed := (distance[0] - 8) * SPEED_C        'some constant times the amount of free distance
+      'speed := (distance[0] - 8)/2 + SPEED_C        'some constant times the amount of free distance
+      speed := (distance[1] - 16) * SPEED_C
+      'speed := 20
       dir := (distance[0] - distance[1]) * STEER_C 'some constant times the difference
    elseif distance[2] < (distance[0] <# distance[1]) - DIST_H
-      speed := (distance[0] - 8) * SPEED_C
+      'speed := (distance[2] - 8)/2 + SPEED_C
+      speed := (distance[1] - 16) * SPEED_C
+      'speed := 20
       dir := (distance[1] - distance[2]) * STEER_C
    else
-      speed := (distance[1] - 8) * SPEED_C
+      'speed := (distance[1] - 8) * SPEED_C
+      speed := (distance[1] - 16) * SPEED_C
+      'speed := 20
       dir := 0
 
    Polybot.tx(0)
@@ -201,6 +207,8 @@ PUB Sonar
         'if bar == 0
         '  bar := 1
         Serin.rxflush
+
+      Serin.rxflush
 
       bar := |< sonarCnt
       
