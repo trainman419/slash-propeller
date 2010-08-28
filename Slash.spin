@@ -12,6 +12,8 @@ CON
   ' setting the clock mode ensures that the clock runs fast enough
   _clkmode = xtal1 + pll16x
   _xinfreq = 5_000_000
+
+  MIN_DIST = 12
 VAR
    'Globals
    long distance[6]
@@ -38,14 +40,10 @@ VAR
 OBJ
    'Serin :  "Simple_Serial"
    Serin :  "FullDuplexSerial"
-   Servo :  "Servo32v3"
+   'Servo :  "Servo32v3"
    Polybot: "FullDuplexSerial"
-   LCD    : "LCD"
 
 PUB Main
-   'LCD.start( 0, 1, 2, 24, 31)
-   'LCD.out($)                ' clear screen
-   'LCD.str(string("Austin's Robot"))
 
    cognew(Sonar, @Sstack)    ' 1 cog
    cognew(lightbar, @Bstack) 'uses a second cog for input processing
@@ -60,17 +58,6 @@ PUB Main
    repeat
       barDir := 0
    repeat
-      'LCD.clear
-      'LCD.str(string("1: "))
-      'LCD.out(distance[0]) 
-      'LCD.str(string(" 2: "))
-      'LCD.out(distance[1]) 
-      'LCD.str(string(" 3: "))
-      'LCD.out(distance[2]) 
-      'LCD.str(string(" 4: "))
-      'LCD.out(distance[3]) 
-      'LCD.str(string(" 5: "))
-      'LCD.out(distance[4]) 
       'moving light
       'if bar == |< 31
       '   barDir := 0
@@ -128,28 +115,26 @@ PUB Process_Input
    'old input processing, supplanted by light show
    'bar := distance[0] + distance[1] << 8 + distance[2] << 16 + distance[3] << 24
 
-   if distance[0] < 16 or distance[1] < 16 or distance[2] < 16 'stop if we get too close to something
+   if distance[0] < MIN_DIST or distance[1] < MIN_DIST or distance[2] < MIN_DIST 'stop if we get too close to something
       speed := 0
       dir := 0
    elseif distance[0] < (distance[1] <# distance[2]) - DIST_H
-      'speed := (distance[0] - 8)/2 + SPEED_C        'some constant times the amount of free distance
-      speed := (distance[1] - 16) * SPEED_C
-      'speed := 20
+      speed := (distance[1] - MIN_DIST) * SPEED_C
       dir := (distance[0] - distance[1]) * STEER_C 'some constant times the difference
    elseif distance[2] < (distance[0] <# distance[1]) - DIST_H
-      'speed := (distance[2] - 8)/2 + SPEED_C
-      speed := (distance[1] - 16) * SPEED_C
-      'speed := 20
+      speed := (distance[1] - MIN_DIST) * SPEED_C
       dir := (distance[1] - distance[2]) * STEER_C
    else
-      'speed := (distance[1] - 8) * SPEED_C
-      speed := (distance[1] - 16) * SPEED_C
-      'speed := 20
+      speed := (distance[1] - MIN_DIST) * SPEED_C
       dir := 0
 
-   Polybot.tx(0)
+   Polybot.tx(83) ' S
    Polybot.tx(speed)
    Polybot.tx(dir)
+   Polybot.tx(distance[0])
+   Polybot.tx(distance[1])
+   Polybot.tx(distance[2])
+   Polybot.tx(69) ' E
 
    
 PUB Sonar
@@ -175,7 +160,6 @@ PUB Sonar
 
    sonarCnt := 0
 
-   'Serin.init(8,-1,-9600)
    Serin.start(8, -1, 1, 9600)
 
    waitcnt( clkfreq + cnt ) 'wait 1 sec for sonars to settle down
@@ -193,7 +177,8 @@ PUB Sonar
       if buffer[0] == 82 and buffer[1] < 58 and buffer[1] > 47 and buffer[2] < 58 and buffer[2] > 47 and buffer[3] < 58 and buffer[3] > 47 and buffer[4] == 13
         distance[sonarCnt] := (buffer[1]-48)*100 + (buffer[2]-48)*10 + (buffer[3]-48)
 
-        cognew(Process_Input, @Pstack)
+        'cognew(Process_Input, @Pstack)
+        Process_Input
 
         sonarCnt++
         if sonarCnt > 4
@@ -220,9 +205,6 @@ PUB Sonar
 
       waitcnt( clkfreq/40000 * 100 + cnt) 'wait 2.5 ms for sensor to start returning data
 
-      'if sonarCnt == 0
-      '   Servo.Set(7, 1000 + distance[sonarCnt]*4)
-      'Servo.Set(7,1000 + sonarCnt*250)
 
 PUB lightbar
    'refresh rate of about 1.5 KHz
