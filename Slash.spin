@@ -18,6 +18,7 @@ VAR
    'Globals
    long distance[6]
    long bar
+   byte heading
 
    'Sonar locals
    byte sonarCnt
@@ -42,6 +43,7 @@ OBJ
    Serin :  "FullDuplexSerial"
    'Servo :  "Servo32v3"
    Polybot: "FullDuplexSerial"
+   GPS : "GPS_Float"
 
 PUB Main
 
@@ -115,17 +117,27 @@ PUB Process_Input
    'old input processing, supplanted by light show
    'bar := distance[0] + distance[1] << 8 + distance[2] << 16 + distance[3] << 24
 
+   ' dir: positive turns right
+
    if distance[0] < MIN_DIST or distance[1] < MIN_DIST or distance[2] < MIN_DIST 'stop if we get too close to something
       speed := 0
-      dir := 0
+      'dir := 0
    elseif distance[0] < (distance[1] <# distance[2]) - DIST_H
       speed := (distance[1] - MIN_DIST) * SPEED_C
-      dir := (distance[0] - distance[1]) * STEER_C 'some constant times the difference
+      'dir := (distance[0] - distance[1]) * STEER_C 'some constant times the difference
    elseif distance[2] < (distance[0] <# distance[1]) - DIST_H
       speed := (distance[1] - MIN_DIST) * SPEED_C
-      dir := (distance[1] - distance[2]) * STEER_C
+      'dir := (distance[1] - distance[2]) * STEER_C
    else
       speed := (distance[1] - MIN_DIST) * SPEED_C
+      'dir := 0
+
+   ' target heading: 128
+   if heading < 128 - 8
+      dir := -80
+   elseif heading > 128 + 8
+      dir := 80
+   else
       dir := 0
 
    Polybot.tx(83) ' S
@@ -176,6 +188,8 @@ PUB Sonar
       'most bit errors will cause one of these conditions to fail
       if buffer[0] == 82 and buffer[1] < 58 and buffer[1] > 47 and buffer[2] < 58 and buffer[2] > 47 and buffer[3] < 58 and buffer[3] > 47 and buffer[4] == 13
         distance[sonarCnt] := (buffer[1]-48)*100 + (buffer[2]-48)*10 + (buffer[3]-48)
+
+        heading := Polybot.rx
 
         'cognew(Process_Input, @Pstack)
         Process_Input
