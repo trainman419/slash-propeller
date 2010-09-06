@@ -50,6 +50,7 @@ PUB Main
    cognew(Sonar, @Sstack)    ' 1 cog
    cognew(lightbar, @Bstack) 'uses a second cog for input processing
    Polybot.start(15, 14, 0, 10000) 'mode 0: don't invert, don't ignore echo
+   GPS.Init
 
    'bar := 1
    bar := |< 16 | |<15
