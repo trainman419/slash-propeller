@@ -43,14 +43,14 @@ OBJ
    Serin :  "FullDuplexSerial"
    'Servo :  "Servo32v3"
    Polybot: "FullDuplexSerial"
-   GPS : "GPS_Float"
+   GPS : "GPS"
 
 PUB Main
 
    cognew(Sonar, @Sstack)    ' 1 cog
    cognew(lightbar, @Bstack) 'uses a second cog for input processing
    Polybot.start(15, 14, 0, 10000) 'mode 0: don't invert, don't ignore echo
-   GPS.Init
+   GPS.Start(19)
 
    'bar := 1
    bar := |< 16 | |<15
@@ -144,9 +144,12 @@ PUB Process_Input
    Polybot.tx(83) ' S
    Polybot.tx(speed)
    Polybot.tx(dir)
-   Polybot.tx(distance[0])
-   Polybot.tx(distance[1])
-   Polybot.tx(distance[2])
+   'Polybot.tx(distance[0])
+   'Polybot.tx(distance[1])
+   'Polybot.tx(distance[2])
+   Polybot.tx(GPS.GetFix)
+   Polybot.tx(GPS.GetLat / 1000000) ' divide down to just degrees
+   Polybot.tx(GPS.GetLon / 1000000) ' divide down to just degrees
    Polybot.tx(69) ' E
 
    
