@@ -55,8 +55,30 @@ PUB Distance(lat1,lon1, lat2,lon2) : d
 '' From: http://en.wikipedia.org/wiki/Great-circle_distance
 '' Compute the distance between two points
 
-PRI sine(a) : r | base
+PRI sine(a) : r | base, c, z
+' EEW; converted from the assembly example in the manual
+'  I'm guessing that this is a LOT less efficient (10x?)
   base := a / ( 90_00_0000 / $0800 )
+
+  c := 0
+  if (base & $0800) == 0
+    c := 1
+
+  r := word[base << 1]
+
+  z := 0
+  if (base & $1000) <> 0
+    z := 1
+
+  if c
+    base := -base
+
+  base := base | ($E000 >> 1)
+  
+  if z
+    r := -r
+
+  return r
   
 
 PRI cosine(a)
@@ -64,8 +86,14 @@ PRI cosine(a)
   return sine(a)
 
 PRI arccos(a) : r
+  r := arcsin(a)
+  r -= 90_00_0000
+  return r
 
-PRI arcsin(a) : r
+PRI arcsin(a) : r | base, diff
+
+  base := $E000 ' base address of sine table
+  ' high address is $F001
 
 PRI main
 
