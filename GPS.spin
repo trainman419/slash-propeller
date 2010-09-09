@@ -55,6 +55,8 @@ PUB Distance(lat1,lon1, lat2,lon2) : d
 '' From: http://en.wikipedia.org/wiki/Great-circle_distance
 '' Compute the distance between two points
 
+
+' For later: http://www.ac6v.com/greatcircle.htm
 PRI sine(a) : r | base, c, z
 ' EEW; converted from the assembly example in the manual
 '  I'm guessing that this is a LOT less efficient (10x?)
