@@ -1,4 +1,11 @@
 CON
+{{
+  Notes on fixed-point math for conputing heading/location
+
+  Need about 27 bits to represent lat/lon to enough precision
+
+  built-in sine table provides 13 bits of input, and 17 bits of output
+}}
 
 VAR
   long Gstack[32] 'a stack for the GPS parser thread
@@ -51,12 +58,31 @@ PUB GetFixTime
 
 return fix_time
 
+PRI Common_Nav(lat1,lon1, lat2,lon2) : cos_d | l
+  ' the calculation that is common to both heading and distance functions
+  ' (1): here
+  ' (2): there
+  l := lon1 - lon2
+
+  ' crazy constants are adjusting the fixed-point numbers to maintain the proper
+  '  decimal precision
+  ' TODO: add crazy constants here
+  cos_d := (sine(lat1)*sine(lat2)) + (cosine(lat1)*cosine(lat2)*cosine(l)) 
+
+  return cos_d
 PUB Distance(lat1,lon1, lat2,lon2) : d
 '' From: http://en.wikipedia.org/wiki/Great-circle_distance
 '' Compute the distance between two points
+'' (1): here
+'' (2): there
 
 
-' For later: http://www.ac6v.com/greatcircle.htm
+PUB Heading(lat1,lon1, lat2,lon2) : h
+'' From: http://www.ac6v.com/greatcircle.htm
+'' compute the heading to get from 1 to 2
+'' (1): here
+'' (2): there
+
 PRI sine(a) : r | base, c, z
 ' EEW; converted from the assembly example in the manual
 '  I'm guessing that this is a LOT less efficient (10x?)
@@ -95,7 +121,28 @@ PRI arccos(a) : r
 PRI arcsin(a) : r | base, diff
 
   base := $E000 ' base address of sine table
-  ' high address is $F001
+  ' high address is $F001, represents sines from 0 to 90
+
+  ' expect input to be on the same scale as the output of the sine function
+  r := $E800 ' middle of table
+  diff := $0400 ' difference
+
+  ' binary search
+  repeat while diff > 0
+    if long[r] > a
+      if ||(long[r - diff] - a) < ||(long[r] - a)
+        r -= diff
+
+    if long[r] < a
+      if ||(long[r + diff] - a) < ||(long[r] - a)
+        r += diff
+  
+    diff >>= 1
+
+  ' convert back to "degrees"
+  r := r * (90_00_0000 / $0800)
+
+  return r
 
 PRI main
 
