@@ -13,7 +13,11 @@ CON
   _clkmode = xtal1 + pll16x
   _xinfreq = 5_000_000
 
-  MIN_DIST = 12
+DAT
+' Various GPS coordinates
+
+   lat_lawn long  38_26_2629
+   lon_lawn long 122_46_2756
 VAR
    'Globals
    long distance[6]
@@ -24,16 +28,18 @@ VAR
    byte sonarCnt
    byte inCnt
    byte buffer[5]
-   long Sstack[32] 'stack for Sonar
+   long Sstack[64] 'stack for Sonar
 
    'lightbar locals
    long Bstack[16] 'stack for lightbar
    byte outCnt
 
    'Process_Input locals
-   long Pstack[32] 'stack for Process_Input
-   byte speed
+   long Pstack[64] 'stack for Process_Input
+   long speed
    byte dir
+   byte nav_mode
+   long nav_timer
 
    'Main locals                 
    byte barDir
@@ -46,6 +52,9 @@ OBJ
    GPS : "GPS"
 
 PUB Main
+
+   nav_mode := 0
+   nav_timer := 0
 
    cognew(Sonar, @Sstack)    ' 1 cog
    cognew(lightbar, @Bstack) 'uses a second cog for input processing
@@ -111,35 +120,67 @@ PUB Main
       waitcnt( clkfreq/100 * 3 + cnt)
       
 CON
+   MIN_DIST = 12
    DIST_H = 2
    SPEED_C = 2
    STEER_C = 1
-PUB Process_Input
+
+   FORWARD = 0
+   REVERSE = 1
+   ESCAPE = 2
+PUB Process_Input | target_heading
    'old input processing, supplanted by light show
    'bar := distance[0] + distance[1] << 8 + distance[2] << 16 + distance[3] << 24
 
    ' dir: positive turns right
+   ' limit dir to +/-70 due to physical constraints of steering mechanism
 
-   if distance[0] < MIN_DIST or distance[1] < MIN_DIST or distance[2] < MIN_DIST 'stop if we get too close to something
-      speed := 0
-      'dir := 0
-   elseif distance[0] < (distance[1] <# distance[2]) - DIST_H
-      speed := (distance[1] - MIN_DIST) * SPEED_C
-      'dir := (distance[0] - distance[1]) * STEER_C 'some constant times the difference
-   elseif distance[2] < (distance[0] <# distance[1]) - DIST_H
-      speed := (distance[1] - MIN_DIST) * SPEED_C
-      'dir := (distance[1] - distance[2]) * STEER_C
-   else
-      speed := (distance[1] - MIN_DIST) * SPEED_C
-      'dir := 0
+   target_heading := GPS.Heading(GPS.GetLat,GPS.GetLon, lat_lawn,lon_lawn)
+   target_heading := 130
 
-   ' target heading: 128
-   if heading < 128 - 8
-      dir := -80
-   elseif heading > 128 + 8
-      dir := 80
-   else
-      dir := 0
+   case nav_mode
+    FORWARD:
+      if distance[0] < MIN_DIST or distance[1] < MIN_DIST or distance[2] < MIN_DIST 'stop if we get too close to something
+         speed := 0
+         dir := 0
+         nav_timer := 0
+         nav_mode := REVERSE
+      else
+         speed := (distance[1] - MIN_DIST) * SPEED_C
+         dir := 0
+    REVERSE:
+      if distance[3] < MIN_DIST or distance[4] < MIN_DIST
+        ' we're stuck! FREAK OUT NOW
+        speed := 0
+        dir := 0
+        nav_timer := 0
+        nav_mode := FORWARD ' let's try going forward...
+      else
+        if nav_timer < 50
+          dir := 30
+          nav_timer++
+          speed := -20 ' back up slowly
+        else
+          dir := 0
+          speed := 0
+          nav_timer := 0
+          nav_mode := ESCAPE
+    ESCAPE:
+      if distance[0] < MIN_DIST or distance[1] < MIN_DIST or distance[2] < MIN_DIST
+        speed := 0
+        dir := 0
+        nav_timer := 0
+        nav_mode := REVERSE
+      else
+        if nav_timer < 50
+          nav_timer++
+          speed := (distance[1] - MIN_DIST) * SPEED_C
+          dir := -30
+        else
+          nav_mode := FORWARD
+
+   speed #>= -40 ' limit minimum value
+   speed <#= 40  ' limit maximum value
 
    Polybot.tx(83) ' S
    Polybot.tx(speed)
@@ -148,8 +189,8 @@ PUB Process_Input
    'Polybot.tx(distance[1])
    'Polybot.tx(distance[2])
    Polybot.tx(GPS.GetFix)
-   Polybot.tx(GPS.GetLat / 1000000) ' divide down to just degrees
-   Polybot.tx(GPS.GetLon / 1000000) ' divide down to just degrees
+   Polybot.tx(nav_mode) ' print it so that we can test
+   Polybot.tx(nav_timer) ' don't need this at the moment...
    Polybot.tx(69) ' E
 
    
