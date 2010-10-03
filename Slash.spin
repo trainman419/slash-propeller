@@ -43,19 +43,24 @@ OBJ
    Serin :  "FullDuplexSerial"
    'Servo :  "Servo32v3"
    Polybot: "FullDuplexSerial"
+   Android: "FullDuplexSerial"
    GPS : "GPS"
 
 PUB Main
 
    cognew(Sonar, @Sstack)    ' 1 cog
-   cognew(lightbar, @Bstack) 'uses a second cog for input processing
    Polybot.start(15, 14, 0, 10000) 'mode 0: don't invert, don't ignore echo
+   '             rx, tx, mode, baud
+   Android.start(22, 23, 0, 115200) ' default BlueSMiRF baud rate
    GPS.Start(19)
 
    'bar := 1
    bar := |< 16 | |<15
    'bar := |< 0 | |<31
    'bar := |<15
+
+   'cognew(lightbar, @Bstack) 'uses a second cog for input processing
+   lightbar
    
    barDir := 1
    repeat
