@@ -7,6 +7,8 @@ CON
   built-in sine table provides 13 bits of input, and 17 bits of output
 }}
 
+deg_bits = 90_00_0000 / $0800
+
 VAR
   long Gstack[32] 'a stack for the GPS parser thread
   byte in_buffer[32] ' input serial buffer, for parsing
@@ -67,42 +69,89 @@ PRI Common_Nav(lat1,lon1, lat2,lon2) : cos_d | l
   ' crazy constants are adjusting the fixed-point numbers to maintain the proper
   '  decimal precision
   ' TODO: add crazy constants here
-  cos_d := (sine(lat1)*sine(lat2)) + (cosine(lat1)*cosine(lat2)*cosine(l)) 
+  cos_d := (sine(lat1)**sine(lat2)) + (cosine(lat1)**cosine(lat2)**cosine(l)) 
 
   return cos_d
-PUB Distance(lat1,lon1, lat2,lon2) : d
+PUB Distance(lat1,lon1, lat2,lon2) : d | cos_d
 '' From: http://en.wikipedia.org/wiki/Great-circle_distance
 '' Compute the distance between two points
 '' (1): here
 '' (2): there
 
+  cos_d := Common_Nav(lat1,lon1, lat1,lon2)
 
-PUB Heading(lat1,lon1, lat2,lon2) : h
+
+PUB Heading(lat1,lon1, lat2,lon2) : h | cos_d
 '' From: http://www.ac6v.com/greatcircle.htm
 '' compute the heading to get from 1 to 2
 '' (1): here
 '' (2): there
 
-PRI sine(a) : r | base, c, z
+  cos_d := Common_Nav(lat1,lon1, lat1,lon2)
+
+PRI sine(a) : r | base, z, tmp, diff, d, m, s, s_f
 ' EEW; converted from the assembly example in the manual
 '  I'm guessing that this is a LOT less efficient (10x?)
-  base := a / ( 90_00_0000 / $0800 )
 
-  c := 0
-  if (base & $0800) == 0
-    c := 1
+' improved with interpolation... I think
 
-  r := word[base << 1]
+' convert input from DMS to fractional degrees
+  ' degrees
+  d := a / 1_00_0000
+  ' minutes
+  m := (a // 1_00_0000) / 1_0000
+  ' seconds
+  s := (a // 1_0000) / 100
+  ' fractional seconds
+  s_f := (a // 100)
+
+  ' convert to fractional
+  m := (m * 100_0000) / 60
+  s := (s * 1000) / 60
+
+  ' combine into fractional degrees
+  a := (d*1_00_0000) + (m * 1_0000) + (s * 100) + s_f 
+
+  base := a / deg_bits ' ~43945
+
+  ' base, range $0000-$1FFF corresponds to 0-359+
 
   z := 0
-  if (base & $1000) <> 0
-    z := 1
+  if (base & $1000) <> 0 ' quadrant 3 or 4
+    z := 1 ' set flag to negate output (sine > 180 is <0)
+    a := 360_00_0000 - a
 
-  if c
-    base := -base
+  if (base & $0800) <> 0 ' quadrant 2 or 4
+    base := -base ' mirror input, sine(x>90) == sine(-(x-90))
+    a := 180_00_0000 - a
 
-  base := base | ($E000 >> 1)
+  ' build base address
+  'base := base | ($E000 >> 1)
+
+  ' lookup
+  r := word[(base << 1) | $E000]
+
+  ' shift up
+  r <<= 16
+
+  ' convert back to degrees; compute error and interpolate
+  base := base & $0FFF
   
+  tmp := base * deg_bits
+  if( tmp < a )
+    diff := (base-1) * deg_bits
+    diff := tmp - diff ' step size corresponding to 16 bits
+    diff := $10000 / diff ' bits per degree. TODO: assert >1
+    diff := (a - tmp) * diff ' linear error approximation
+    r += diff ' correct for error
+  else
+    diff := (base+1) * deg_bits
+    diff := diff - tmp    ' step size for 16 bits
+    diff := $10000 / diff ' bits per degree
+    diff := (tmp - a) * diff ' linear approximation
+    r -= diff                ' correct
+
+  ' if input >180, negate output
   if z
     r := -r
 
