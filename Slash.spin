@@ -36,7 +36,7 @@ VAR
 
    'Process_Input locals
    long Pstack[64] 'stack for Process_Input
-   long speed
+   byte speed
    byte dir
    byte nav_mode
    long nav_timer
@@ -195,11 +195,23 @@ PUB Process_Input | target_heading, a, b, c
         dir := Android.rx
         Android.rx
 
-   speed #>= -40 ' limit minimum value
-   speed <#= 40  ' limit maximum value
+   ' speed and dir are bytes, range 0-255
+   ' deal with them as such :(
 
-   dir #>= -60
-   dir <#= 60
+   ' limits on speed should be -40 to 40
+   if( speed > 40 and speed < 128 )
+      speed := 40
+
+   if( speed > 127 and speed < 216 ) ' 216 == -40
+      speed := 216
+
+   ' limits on dir should be -60 to 60
+   if( dir > 60 and dir < 128 )
+      dir := 60
+
+   if( dir > 127 and dir < 196 ) ' 196 == -60
+      dir := 196
+
 
    Polybot.tx(83) ' S
    Polybot.tx(speed)
@@ -208,8 +220,8 @@ PUB Process_Input | target_heading, a, b, c
    'Polybot.tx(distance[1])
    'Polybot.tx(distance[2])
    Polybot.tx(GPS.GetFix)
-   Polybot.tx(nav_mode) ' print it so that we can test
-   Polybot.tx(nav_timer) ' don't need this at the moment...
+   Polybot.tx(dir) ' print it so that we can test
+   Polybot.tx(dir & $FF) ' don't need this at the moment...
    Polybot.tx(69) ' E
 
    
