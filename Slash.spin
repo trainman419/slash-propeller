@@ -45,9 +45,7 @@ VAR
    byte barDir
 
 OBJ
-   'Serin :  "Simple_Serial"
    Serin :  "FullDuplexSerial"
-   'Servo :  "Servo32v3"
    Polybot: "FullDuplexSerial"
    Android: "FullDuplexSerial"
    GPS : "GPS"
@@ -56,6 +54,9 @@ PUB Main
 
    nav_mode := 0
    nav_timer := 0
+
+   speed := 0
+   dir := 0
 
    cognew(Sonar, @Sstack)    ' 1 cog
    Polybot.start(15, 14, 0, 10000) 'mode 0: don't invert, don't ignore echo
@@ -133,13 +134,13 @@ CON
    FORWARD = 0
    REVERSE = 1
    ESCAPE = 2
-PUB Process_Input | target_heading
+PUB Process_Input | target_heading, a, b, c
    'old input processing, supplanted by light show
    'bar := distance[0] + distance[1] << 8 + distance[2] << 16 + distance[3] << 24
 
    ' dir: positive turns right
    ' limit dir to +/-70 due to physical constraints of steering mechanism
-
+{{
    target_heading := GPS.Heading(GPS.GetLat,GPS.GetLon, lat_lawn,lon_lawn)
    target_heading := 130
 
@@ -183,9 +184,22 @@ PUB Process_Input | target_heading
           dir := -30
         else
           nav_mode := FORWARD
+}}
+   a := Android.rxcheck
+   if( a <> -1 ) ' if we have input data waiting
+      case a
+       "S":
+        speed := Android.rx
+        Android.rx
+       "D":
+        dir := Android.rx
+        Android.rx
 
    speed #>= -40 ' limit minimum value
    speed <#= 40  ' limit maximum value
+
+   dir #>= -60
+   dir <#= 60
 
    Polybot.tx(83) ' S
    Polybot.tx(speed)
@@ -240,6 +254,18 @@ PUB Sonar
         distance[sonarCnt] := (buffer[1]-48)*100 + (buffer[2]-48)*10 + (buffer[3]-48)
 
         heading := Polybot.rx
+
+        ' navigation sentence
+        Android.tx("N")
+        Android.tx(GPS.getFix)
+        Android.tx(heading)
+        Android.tx(0) ' TODO: actually send Lat/Lon
+
+        ' sonar sentence
+        Android.tx("S")
+        Android.tx(sonarCnt)
+        Android.tx(distance[sonarCnt])
+        Android.tx(0)
 
         'cognew(Process_Input, @Pstack)
         Process_Input
