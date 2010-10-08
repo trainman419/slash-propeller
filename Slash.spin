@@ -22,7 +22,12 @@ VAR
    'Globals
    long distance[6]
    long bar
+
+   ' Data from the polybot board
    byte heading
+   byte battery
+   byte speeds[2]
+   byte counts[4]
 
    'Sonar locals
    byte sonarCnt
@@ -266,6 +271,17 @@ PUB Sonar
         distance[sonarCnt] := (buffer[1]-48)*100 + (buffer[2]-48)*10 + (buffer[3]-48)
 
         heading := Polybot.rx
+        battery := Polybot.rx
+
+        speeds[0] := Polybot.rx
+        speeds[1] := Polybot.rx
+
+        counts[0] := Polybot.rx
+        counts[1] := Polybot.rx
+        counts[2] := Polybot.rx
+        counts[3] := Polybot.rx
+
+        repeat while Polybot.rx <> 0
 
         ' navigation sentence
         Android.tx("N")
@@ -279,6 +295,21 @@ PUB Sonar
         Android.tx(distance[sonarCnt])
         Android.tx(0)
 
+        ' battery sentence
+        Android.tx("B")
+        Android.tx(battery)
+        Android.tx(0)
+
+        ' Wheel sentence
+        Android.tx("W")
+        Android.tx(speeds[0])
+        Android.tx(speeds[1])
+        Android.tx(counts[0])
+        Android.tx(counts[1])
+        Android.tx(counts[2])
+        Android.tx(counts[3])
+        Android.tx(0)
+                         
         'cognew(Process_Input, @Pstack)
         Process_Input
 
