@@ -74,12 +74,12 @@ PUB Main
    'bar := |< 0 | |<31
    'bar := |<15
 
-   'cognew(lightbar, @Bstack) 'uses a second cog for input processing
-   lightbar
+   cognew(lightbar, @Bstack) 'uses a second cog for input processing
+   'lightbar
    
    barDir := 1
-   repeat
-      barDir := 0
+   'repeat
+   '   barDir := 0
    repeat
       'moving light
       'if bar == |< 31
@@ -328,7 +328,7 @@ PUB Sonar
 
       Serin.rxflush
 
-      bar := |< sonarCnt
+      'bar := |< sonarCnt
       
       OUTA[sonarCnt+9] := 1
 
