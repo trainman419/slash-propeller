@@ -28,6 +28,7 @@ VAR
    byte battery
    byte speeds[2]
    byte counts[4]
+   byte bumpers
 
    'Sonar locals
    byte sonarCnt
@@ -281,6 +282,8 @@ PUB Sonar
         counts[2] := Polybot.rx
         counts[3] := Polybot.rx
 
+        bumpers := Polybot.rx
+
         repeat while Polybot.rx <> 0
 
         ' navigation sentence
@@ -308,6 +311,11 @@ PUB Sonar
         Android.tx(counts[1])
         Android.tx(counts[2])
         Android.tx(counts[3])
+        Android.tx(0)
+
+        ' Bumpers sentence
+        Android.tx("B")
+        Android.tx(bumpers)
         Android.tx(0)
                          
         'cognew(Process_Input, @Pstack)
