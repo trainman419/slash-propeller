@@ -314,7 +314,7 @@ PUB Sonar
         Android.tx(0)
 
         ' Bumpers sentence
-        Android.tx("B")
+        Android.tx("T")
         Android.tx(bumpers)
         Android.tx(0)
                          
