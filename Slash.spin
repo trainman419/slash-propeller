@@ -27,7 +27,7 @@ VAR
    byte heading
    byte battery
    byte speeds[2]
-   byte counts[4]
+   byte counts[6]
    byte bumpers
 
    'Sonar locals
@@ -281,6 +281,8 @@ PUB Sonar
         counts[1] := Polybot.rx
         counts[2] := Polybot.rx
         counts[3] := Polybot.rx
+        counts[4] := Polybot.rx
+        counts[5] := Polybot.rx
 
         bumpers := Polybot.rx
 
@@ -311,6 +313,8 @@ PUB Sonar
         Android.tx(counts[1])
         Android.tx(counts[2])
         Android.tx(counts[3])
+        Android.tx(counts[4])
+        Android.tx(counts[5])
         Android.tx(0)
 
         ' Bumpers sentence
